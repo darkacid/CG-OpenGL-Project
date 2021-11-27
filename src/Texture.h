@@ -1,4 +1,6 @@
-#pragma once
+#ifndef TEXTURE_H
+#define TEXTURE_H
+
 #include <string>
 #include <GL/glew.h>
 
@@ -19,3 +21,5 @@ public:
 	int GetWidth() const { return m_Width; }
 	int GetHeight() const { return m_Height;  }
 };
+
+#endif

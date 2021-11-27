@@ -1,13 +1,19 @@
+#include <iostream>
+#include <opencv2/opencv.hpp>
 #include "Texture.h"
-#include "stb_image.h"
 
 
 Texture::Texture(const std::string& path)
 :m_filePath(path), m_localBuffer(nullptr),
 m_Width(0), m_Height(0), m_BPP(0)
 {
-	stbi_set_flip_vertically_on_load(1);
-	m_localBuffer = stbi_load(path.c_str(), &m_Width, &m_Height, &m_BPP, 4);										
+    cv::Mat texture = cv::imread(path, cv::IMREAD_COLOR);
+    cv::cvtColor(texture, texture, cv::COLOR_BGR2RGBA);
+    m_Width = texture.cols;
+    m_Height = texture.rows;
+    m_localBuffer = static_cast<unsigned char*>(std::malloc(m_Height * texture.step));
+    std::memcpy(m_localBuffer, texture.data, m_Height * texture.step);
+    
 	glGenTextures(1, &m_textureID); 
 	glBindTexture(GL_TEXTURE_2D, m_textureID );
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -17,9 +23,7 @@ m_Width(0), m_Height(0), m_BPP(0)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_localBuffer);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	if (m_localBuffer)
-		stbi_image_free(m_localBuffer);
-
+    std::free(m_localBuffer);
 }
 
 Texture::~Texture()
