@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-Mesh::Mesh(GLfloat* vertices, int count) {
+Mesh::Mesh(GLfloat* vertices, int count) : stride(0) {
 	glGenBuffers(1, &vboId);
 	glBindBuffer(GL_ARRAY_BUFFER, vboId);
 	glBufferData(GL_ARRAY_BUFFER, count * sizeof(float), vertices, GL_STATIC_DRAW);
