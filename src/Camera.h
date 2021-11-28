@@ -117,6 +117,7 @@ public:
 
     mat4 GetInvertedCamera(float y) {
       // returns the inverted camera matrix
+        return inverse(GetViewMatrix());
     }
 
 private:
