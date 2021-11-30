@@ -13,6 +13,21 @@
 #define PI 3.14
 #define TO_RADIAN(x) ((x)*(PI))/180
 
+void CheckOpenGLError(const char* stmt, const char* fname, int line)
+{
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR)
+    {
+        printf("OpenGL error %i, at %s:%i - for %s\n", err, fname, line, stmt);
+        abort();
+    }
+}
+
+#define GL_CHECK(stmt) do { \
+        stmt; \
+        CheckOpenGLError(#stmt, __FILE__, __LINE__); \
+    } while (0)
+
 struct Surface{
     int size;
     int indexCount;
@@ -46,7 +61,6 @@ Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
     
     return output;
 }
-
 
 
 int main(){
@@ -84,50 +98,83 @@ int main(){
     glGenVertexArrays(1, &vertexArray);
     glBindVertexArray(vertexArray);
 
-    Surface waterSurface = generateIndexedTriangleStripPlane(10, 7);
-
-    Mesh m(waterSurface.coordinates.data(), waterSurface.size);
+//    Surface waterSurface = generateIndexedTriangleStripPlane(10, 7);
+//
+//    Mesh m(waterSurface.coordinates.data(), waterSurface.size);
+//    m.AddLayout(3);
+//    m.AddLayout(2);
+//
+//    m.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
+//
+//    Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
+//    t.Bind(GL_TEXTURE0);
+//
+//    Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh", "", "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
+//
+//    sh.bind();
+    
+    Surface terrain = generateIndexedTriangleStripPlane(10, 7);
+    Mesh m(terrain.coordinates.data(), terrain.size);
     m.AddLayout(3);
     m.AddLayout(2);
 
-    m.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
+    m.BindIndexBuffer(terrain.indexBuffer.data(), terrain.indexCount);
 
-    Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
-    t.Bind(GL_TEXTURE0);
 
-    Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh", "", "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
+    Shader sh2("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
+               "",//"/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader1.gsh"
+               "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader2.fsh");
 
-    sh.bind();
+    sh2.bind();
+    
+    Texture t1("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainHeightMap.png");
+    t1.Bind(GL_TEXTURE0);
+    
+    Texture t2("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainDiffuse.png");
+    t2.Bind(GL_TEXTURE1);
+
+    
     
     //Setting up uniforms
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -8.0f));
-    glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -8.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 4.0));
+    GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
     
     Camera cam;
     glm::mat4 view = cam.GetViewMatrix();
-    glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]);
+    GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
     
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 1.0f, 150.0f);
-    glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]);
+    GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
     
+    int kALocation = glGetUniformLocation(sh2.GetProgramId(), "Ka");
+    GL_CHECK(glUniform1f(kALocation, 0.1));
+    
+    int kDLocation = glGetUniformLocation(sh2.GetProgramId(), "Kd");
+    GL_CHECK(glUniform1f(kDLocation, 1.0));
+    
+    int kSLocation = glGetUniformLocation(sh2.GetProgramId(), "Ks");
+    GL_CHECK(glUniform1f(kSLocation, 1.0));
+    
+    GL_CHECK(glUniform3f(glGetUniformLocation(sh2.GetProgramId(), "lightDir"), -0.2f, -1.0f, -0.3f));
     
     glfwSetWindowUserPointer(wind, &cam);
+    glfwSetInputMode(wind, GLFW_STICKY_KEYS, 1);
     
     
     auto keyboardCallback = [](GLFWwindow* window, int key, int scancode, int action, int mods) {
         Camera* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
         if (key == GLFW_KEY_RIGHT && action == GLFW_REPEAT)
         {
-            cam->ProcessKeyboard(RIGHT, 0.2f);
+            cam->ProcessKeyboard(RIGHT, 0.02f);
         }
         else if (key == GLFW_KEY_LEFT && action == GLFW_REPEAT) {
-            cam->ProcessKeyboard(LEFT, 0.2f);
+            cam->ProcessKeyboard(LEFT, 0.02f);
         }
         else if (key == GLFW_KEY_UP && action == GLFW_REPEAT) {
-            cam->ProcessKeyboard(FORWARD, 0.2f);
+            cam->ProcessKeyboard(FORWARD, 0.02f);
         }
         else if (key == GLFW_KEY_DOWN && action == GLFW_REPEAT) {
-            cam->ProcessKeyboard(BACKWARD, 0.2f);
+            cam->ProcessKeyboard(BACKWARD, 0.02f);
         }
     };
     
@@ -147,15 +194,16 @@ int main(){
     };
     glfwSetCursorPosCallback(wind, cursorPosCallback);
     
-    float alpha = 0.f;
     while(!glfwWindowShouldClose(wind)){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        
         glm::mat4 view = cam.GetViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]);
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
         m.DrawElements();
 
-        alpha += 3;
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "time"), glfwGetTime()));
+        
         glfwSwapBuffers(wind);
         glfwPollEvents();
     }
