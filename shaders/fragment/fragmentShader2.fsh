@@ -29,5 +29,5 @@ void main(){
 //    }
 
     color = normalize(vec4(Ia + Id , 1.0) * texture(heightMap, texCoords));    //+ Is
-    color = texture(heightMap, texCoords);
+    color = texture(terrainTexture, texCoords);
 }

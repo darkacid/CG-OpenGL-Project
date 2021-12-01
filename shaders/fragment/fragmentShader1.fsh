@@ -12,7 +12,7 @@ uniform float Ks;
 uniform float time;
 
 uniform vec3 lightDir;
-uniform sampler2D tex;
+uniform sampler2D waterTex;
 
 void main(){
     vec3 lightColor = vec3(1.0, 1.0, 1.0);
@@ -29,6 +29,6 @@ void main(){
 //      Is = Ks * pow(specAngle, 120.f) * specularColor;
 //    }
 
-    vec2 textureCoord = vec2(texCoord.x, texCoord.y + time / 8);
-    color = normalize(vec4(Ia + Id , 1.0) * texture(tex, textureCoord));    //+ Is
+    vec2 textureCoord = vec2(texCoord.x + time / 8, texCoord.y);
+    color = normalize(vec4(Ia + Id , 1.0) * texture(waterTex, textureCoord));    //+ Is
 }
