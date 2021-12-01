@@ -70,6 +70,10 @@ Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
     return output;
 }
 
+void glDebugCallback(GLenum source,GLenum type,GLuint id,GLenum severity,GLsizei length,const GLchar *message,const void *userParam)
+{
+    std::cout << "[OpenGL Error](" << type << ") " << message << std::endl;
+}
 
 int main(){
     GLFWwindow* wind;
@@ -116,10 +120,10 @@ int main(){
 
     waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
 
-    Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
+    Texture t("../res/WaterDiffuse.png");
     t.Bind(GL_TEXTURE0);
 
-    Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh", "", "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
+    Shader sh("../shaders/vertex/vertexShader1.vsh", "", "../shaders/fragment/fragmentShader1.fsh");
 
     sh.bind();
     
@@ -130,15 +134,15 @@ int main(){
 
     terrainMesh.BindIndexBuffer(terrain.indexBuffer.data(), terrain.indexCount);
     
-    Texture t1("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainHeightMap.png");
-    Texture t2("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainDiffuse.png");
+    Texture t1("../res/TerrainHeightMap.png");
+    Texture t2("../res/TerrainDiffuse.png");
     
     t1.Bind(GL_TEXTURE0);
     t2.Bind(GL_TEXTURE1);
 
-    Shader sh2("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
+    Shader sh2("../shaders/vertex/vertexShader2.vsh",
                "",//"/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader1.gsh"
-               "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader2.fsh");
+               "../shaders/fragment/fragmentShader2.fsh");
     sh2.bind();
     
     glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "heightMap"), 0);
