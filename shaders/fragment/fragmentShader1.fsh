@@ -30,5 +30,5 @@ void main(){
 //    }
 
     vec2 textureCoord = vec2(texCoord.x + time / 8, texCoord.y);
-    color = normalize(vec4(Ia + Id , 1.0) * texture(waterTex, textureCoord));    //+ Is
+    color = normalize(vec4(Id , 1.0) * texture(waterTex, textureCoord));    //+ Is
 }

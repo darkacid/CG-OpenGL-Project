@@ -16,7 +16,7 @@ uniform sampler2D terrainTexture;
 void main(){
     vec3 lightColor = vec3(1.0, 1.0, 1.0);
     vec3 Ia = Ka * lightColor;
-    vec3 lightDirection = normalize(-lightDir);
+    vec3 lightDirection = -normalize(lightDir);
     float lambertian = max(dot(lightDirection, normalize(normal)), 0.0);
     vec3 Id = Kd * lambertian * lightColor;
 //    float spec = 0.0;
@@ -28,6 +28,7 @@ void main(){
 //      Is = Ks * pow(specAngle, 120.f) * specularColor;
 //    }
 
-    color = normalize(vec4(Ia + Id , 1.0) * texture(heightMap, texCoords));    //+ Is
-    color = texture(terrainTexture, texCoords);
+    color = vec4(normalize(vec4(Id , 1.0) * texture(terrainTexture, texCoords)).xyz, 1.0);    //+ Is  + Id
+    //
+    //color = texture(terrainTexture, texCoords);
 }
