@@ -9,7 +9,7 @@ Texture::Texture(const std::string& path)
 :m_filePath(path), m_localBuffer(nullptr),
 m_Width(0), m_Height(0), m_BPP(0)
 {
-    cv::Mat texture = cv::imread(path, cv::IMREAD_COLOR);
+    cv::Mat texture = cv::imread(path, cv::IMREAD_UNCHANGED);
     cv::cvtColor(texture, texture, cv::COLOR_BGR2RGBA);
     m_Width = texture.cols;
     m_Height = texture.rows;

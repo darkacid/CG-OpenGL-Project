@@ -21,7 +21,7 @@ vec3 getNormal()
 }
 
 void main(){
-    normal = transpose(inverse(mat3(view * model))) * getNormal();
+    normal = transpose(inverse(mat3(model))) * getNormal();
     
     gl_Position = projection * view * model * gl_in[0].gl_Position;
     texCoords = gs_in[0].texCoord;

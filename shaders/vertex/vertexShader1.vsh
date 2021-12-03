@@ -13,6 +13,6 @@ uniform mat4 projection;
 void main(){
     gl_Position = projection * view * model * vec4(position, 1.0f);
     interPos = vec3(model * vec4(position, 1.0f));
-    interNormal = transpose(inverse(mat3(view * model))) * vec3(0.0, 1.0, 0.0);
+    interNormal = transpose(inverse(mat3(model))) * vec3(0.0, 1.0, 0.0);
     texCoord = tCoord;
 }

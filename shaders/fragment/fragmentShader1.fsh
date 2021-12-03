@@ -12,6 +12,7 @@ uniform float Ks;
 uniform float time;
 
 uniform vec3 lightDir;
+uniform vec3 viewDir;
 uniform sampler2D waterTex;
 
 void main(){
@@ -20,15 +21,15 @@ void main(){
     vec3 lightDirection = normalize(-lightDir);
     float lambertian = max(dot(lightDirection, normalize(interNormal)), 0.0);
     vec3 Id = Kd * lambertian * lightColor;
-//    float spec = 0.0;
-//    vec3 Is = vec3(0.0);
-//    if(lambertian > 0.0) {
-//      vec3 reflection = reflect(-lightDir, interNormal);
-//      vec3 view = normalize(viewDirection - interPosition);
-//      float specAngle = max(dot(reflection, view), 0.0);
-//      Is = Ks * pow(specAngle, 120.f) * specularColor;
-//    }
+    float spec = 0.0;
+    vec3 Is = vec3(0.0);
+    if(lambertian > 0.0) {
+      vec3 reflection = reflect(-lightDir, interNormal);
+      vec3 view = normalize(viewDir - interPos);
+      float specAngle = max(dot(reflection, view), 0.0);
+      Is = Ks * pow(specAngle, 120.f) * lightColor;
+    }
 
     vec2 textureCoord = vec2(texCoord.x + time / 8, texCoord.y);
-    color = normalize(vec4(Id , 1.0) * texture(waterTex, textureCoord));    //+ Is
+    color = normalize(vec4(Ia + Id + Is, 1.0) * texture(waterTex, textureCoord));    //+ Is
 }
