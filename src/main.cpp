@@ -110,58 +110,43 @@ int main(){
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    //Water
     Surface waterSurface = generateIndexedTriangleStripPlane(100, 100);
-
     Mesh waterMesh(waterSurface.coordinates.data(), waterSurface.size);
     waterMesh.AddLayout(3);
-    waterMesh.AddLayout(2);
-
-    waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
+    waterMesh.AddLayout(2);waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
 
     Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
-    t.Bind(GL_TEXTURE0);
 
     Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh", "", "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
-
-    sh.bind();
     
+    //Terrain
     Surface terrain = generateIndexedTriangleStripPlane(100, 100);
     Mesh terrainMesh(terrain.coordinates.data(), terrain.size);
     terrainMesh.AddLayout(3);
     terrainMesh.AddLayout(2);
-
     terrainMesh.BindIndexBuffer(terrain.indexBuffer.data(), terrain.indexCount);
     
     Texture t1("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainHeightMap.png");
     Texture t2("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainDiffuse.png");
     
-    t1.Bind(GL_TEXTURE0);
-    t2.Bind(GL_TEXTURE1);
-
     Shader sh2("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader1.gsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader2.fsh");
-    sh2.bind();
     
-    glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "heightMap"), 0);
-    glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "terrainTexture"), 1);
+    
+    Texture grassDist("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDistribution.png");
+    Texture grassText("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDiffuse.png");
+    
+    Shader sh3("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
+               "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader2.gsh",
+               "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader3.fsh");
     
     
     //Setting up uniforms
     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -8.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
-    GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
-    
     Camera cam;
-    glm::mat4 view = cam.GetViewMatrix();
-    GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
-    
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 1.0f, 150.0f);
-    GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
-    
-    GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "Ka"), 0.3));
-    GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "Kd"), 1.0));
-    GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "Ks"), 1.0));
-    GL_CHECK(glUniform3f(glGetUniformLocation(sh2.GetProgramId(), "lightDir"), 0.0f, 1.0f, 1.0f));
     
     glfwSetWindowUserPointer(wind, &cam);
     glfwSetInputMode(wind, GLFW_STICKY_KEYS, 1);
@@ -232,10 +217,27 @@ int main(){
         GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Kd"), 1.0));
         GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ks"), 1.0));
         GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
+        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "viewDir"), cam.Position.x, cam.Position.y, cam.Position.z));
         glUniform1i(glGetUniformLocation(sh.GetProgramId(), "waterTex"), 0);
 
         waterMesh.DrawElements();
         
+        t1.Bind(GL_TEXTURE0);
+        grassDist.Bind(GL_TEXTURE1);
+        grassText.Bind(GL_TEXTURE2);
+        sh3.bind();
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh3.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh3.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh3.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh3.GetProgramId(), "Ka"), 0.3));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh3.GetProgramId(), "Kd"), 1.0));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh3.GetProgramId(), "Ks"), 1.0));
+        GL_CHECK(glUniform3f(glGetUniformLocation(sh3.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
+        glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "heightMap"), 0);
+        glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "grassDist"), 1);
+        glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "grassText"), 2);
+        
+        terrainMesh.DrawElements();
         
         
         glfwSwapBuffers(wind);
