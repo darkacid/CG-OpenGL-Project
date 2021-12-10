@@ -16,6 +16,7 @@ class FrameBuffer
   private:
 	unsigned int m_frameBufferID;
 	unsigned int m_textureID;
+    unsigned int m_renderBufferID;
 	int InitTextureAttachment(int width, int height);
 	int InitRenderBufferAttachment(int width, int height);
 };

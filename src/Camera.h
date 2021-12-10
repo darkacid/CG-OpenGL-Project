@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <vector>
 
@@ -64,7 +65,7 @@ public:
     }
 
     // returns the view matrix calculated using Euler Angles and the LookAt Matrix
-    glm::mat4 GetViewMatrix()
+    mat4 GetViewMatrix() const
     {
         return lookAt(Position, Position + Front, Up);
     }
@@ -100,7 +101,8 @@ public:
             if (Pitch < -89.0f)
                 Pitch = -89.0f;
         }
-
+        
+        //std::cout << Pitch << std::endl;
         // update Front, Right and Up Vectors using the updated Euler angles
         updateCameraVectors();
     }
@@ -116,8 +118,19 @@ public:
     }
 
     mat4 GetInvertedCamera(float y) {
-      // returns the inverted camera matrix
-        return inverse(GetViewMatrix());
+        float currY = Position.y;
+        float curPitch = Pitch;
+        float currYaw = Yaw;
+        
+        Pitch = -Pitch;
+        Position.y -= 2 * (Position.y + 1.5);
+        updateCameraVectors();
+        mat4 invertedCameraMatrix = GetViewMatrix();
+        Pitch = curPitch;
+        Position.y = currY;
+        updateCameraVectors();
+        
+        return invertedCameraMatrix;
     }
 
 private:
