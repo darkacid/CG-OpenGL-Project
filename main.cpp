@@ -237,10 +237,6 @@ int main(){
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader2.gsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader3.fsh");
     
-    Shader lineShader("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/VshaderTest.vsh",
-                      "",
-                      "/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/FshaderTest.fsh");
-    
     //Setting up uniforms
     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
     
