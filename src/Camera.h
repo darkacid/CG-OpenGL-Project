@@ -120,10 +120,9 @@ public:
     mat4 GetInvertedCamera(float y) {
         float currY = Position.y;
         float curPitch = Pitch;
-        float currYaw = Yaw;
         
-        Pitch = -Pitch;
-        Position.y -= 2 * (Position.y + 1.5);
+        Pitch = -curPitch;
+        Position.y = -currY;
         updateCameraVectors();
         mat4 invertedCameraMatrix = GetViewMatrix();
         Pitch = curPitch;

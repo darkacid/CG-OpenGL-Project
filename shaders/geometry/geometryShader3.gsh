@@ -7,7 +7,7 @@ in VS_OUT {
 } gs_in[];
 
 out vec2 texCoords;
-out vec3 interPos;
+out vec4 interPos;
 out vec3 normal;
 
 uniform mat4 model;
@@ -30,7 +30,7 @@ void main(){
     float dist = distance(vec3(model * pos), rippleCenter);
     float offset = 10 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
     gl_Position = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
-    interPos = transpose(inverse(mat3(model))) * vec3(pos.x, pos.y + offset, pos.z);
+    interPos = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     texCoords = gs_in[0].texCoord;
     EmitVertex();
     
@@ -38,7 +38,7 @@ void main(){
     dist = distance(vec3(model * pos), rippleCenter);
     offset = 10 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
     gl_Position = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
-    interPos = transpose(inverse(mat3(model))) * vec3(pos.x, pos.y + offset, pos.z);
+    interPos = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     texCoords = gs_in[1].texCoord;
     EmitVertex();
     
@@ -46,7 +46,7 @@ void main(){
     dist = distance(vec3(model * pos), rippleCenter);
     offset = 10 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
     gl_Position = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
-    interPos = transpose(inverse(mat3(model))) * vec3(pos.x, pos.y + offset, pos.z);
+    interPos = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     texCoords = gs_in[2].texCoord;
     EmitVertex();
     EndPrimitive();
