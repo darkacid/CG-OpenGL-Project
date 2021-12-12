@@ -47,8 +47,6 @@ struct CallbackContext {
     glm::mat4* model;
     Camera* cam;
     Shader* shader;
-    unsigned int rayBufferId;
-    Shader* lineShader;
 };
 
 Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
@@ -102,7 +100,7 @@ Ray constructRayThroughPixel(const Camera& camera, int i, int j) {
     return {camPos, glm::normalize(dir)};
 }
 
-void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x, unsigned int rb, Shader& lineShader) {
+void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x) {
     for (int i = 0; i < waterSurface.indexCount - 2; ++i) {
         Triangle t;
         if (!(i % 2)) {
@@ -155,14 +153,6 @@ void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Sha
                 rayAttribs.push_back(intersection.x);
                 rayAttribs.push_back(intersection.y);
                 rayAttribs.push_back(intersection.z);
-                
-                lineShader.bind();
-                GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, rb));
-                GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), rayAttribs.data(), GL_DYNAMIC_DRAW));
-                
-                GL_CHECK(glDrawArrays(GL_LINES, 0, 2));
-                lineShader.unbind();
-                
                 
                 glfwSetTime(0.0);
                 sh.bind();
@@ -218,14 +208,6 @@ int main(){
     waterMesh.AddLayout(3);
     waterMesh.AddLayout(2);
     waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
-
-    
-    unsigned int rayBuffer;
-    glGenBuffers(1, &rayBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, rayBuffer);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);
-    
     
     Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
 
@@ -267,7 +249,7 @@ int main(){
     
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 1.f, 150.0f);
     
-    CallbackContext ctx = {&waterSurface, &model, &cam, &sh, rayBuffer, &lineShader};
+    CallbackContext ctx = {&waterSurface, &model, &cam, &sh};
     glfwSetWindowUserPointer(wind, &ctx);
     glfwSetInputMode(wind, GLFW_STICKY_KEYS, 1);
     
@@ -311,7 +293,7 @@ int main(){
             double yPos;
             glfwGetCursorPos(window, &xPos, &yPos);
             std::cout << xPos << " " << yPos << std::endl;
-            func(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos, ctx->rayBufferId, *(ctx->lineShader));
+            func(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
         }
     };
     glfwSetMouseButtonCallback(wind, mouseButtonCallback);
