@@ -268,13 +268,14 @@ int main(){
     static bool camFreeze=false;
 
     auto cursorPosCallback = [](GLFWwindow* window, double xpos, double ypos) {
-        if (camFreeze ==true) return;
+
         static float curPosX = xpos, curPosY = ypos;
         if (xpos >= 0 && xpos < width && ypos >= 0 && ypos < height) {
             CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
             float dx = xpos - curPosX;
             float dy = curPosY - ypos;
-            ctx->cam->ProcessMouseMovement(dx, dy);
+            if (camFreeze !=true)
+                ctx->cam->ProcessMouseMovement(dx, dy);
             
             curPosX = xpos;
             curPosY = ypos;

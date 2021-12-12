@@ -12,10 +12,6 @@
 #include "Triangle.hpp"
 #include "FrameBuffer.h"
 
-#include <opencv2/opencv.hpp>
-
-#define PI 3.14
-#define TO_RADIAN(x) ((x)*(PI))/180
 
 const int width = 800;
 const int height = 800;
@@ -100,7 +96,9 @@ Ray constructRayThroughPixel(const Camera& camera, int i, int j) {
     return {camPos, glm::normalize(dir)};
 }
 
-void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x) {
+void rayTrace(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x) {
+    float tVal;
+    Ray r = constructRayThroughPixel(cam, y, x);
     for (int i = 0; i < waterSurface.indexCount - 2; ++i) {
         Triangle t;
         if (!(i % 2)) {
@@ -142,8 +140,6 @@ void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Sha
         glm::vec3 n = t.getPlaneNormal();
         
         if (!(isnan(n.x) && isnan(n.y) && isnan(n.z))) {
-            float tVal;
-            Ray r = constructRayThroughPixel(cam, y, x);
             if (t.intersects(r, tVal)) {
                 vec3 intersection = r.p0 + tVal * r.dir;
                 std::vector<float> rayAttribs;
@@ -153,11 +149,9 @@ void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Sha
                 rayAttribs.push_back(intersection.x);
                 rayAttribs.push_back(intersection.y);
                 rayAttribs.push_back(intersection.z);
-                
                 glfwSetTime(0.0);
                 sh.bind();
                 GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "rippleCenter"), intersection.x, intersection.y, intersection.z));
-                std::cout << "Here" << std::endl;
                 sh.unbind();
             }
         }
@@ -232,17 +226,13 @@ int main(){
     //Grass
     Texture grassDist("../res/GrassDistribution.png");
     Texture grassText("../res/GrassDiffuse.png");
-    
+
     Shader sh3("../shaders/vertex/vertexShader2.vsh",
                "../shaders/geometry/geometryShader2.gsh",
                "../shaders/fragment/fragmentShader3.fsh");
     
-    Shader lineShader("../shaders/vertex/VshaderTest.vsh",
-                      "",
-                      "../shaders/vertex/FshaderTest.fsh");
-    
     //Setting up uniforms
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.5, 1.0, 1.0));
     
     Camera cam;
     
@@ -278,13 +268,14 @@ int main(){
     static bool camFreeze=false;
 
     auto cursorPosCallback = [](GLFWwindow* window, double xpos, double ypos) {
-        if (camFreeze ==true) return;
+
         static float curPosX = xpos, curPosY = ypos;
         if (xpos >= 0 && xpos < width && ypos >= 0 && ypos < height) {
             CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
             float dx = xpos - curPosX;
             float dy = curPosY - ypos;
-            ctx->cam->ProcessMouseMovement(dx, dy);
+            if (camFreeze !=true)
+                ctx->cam->ProcessMouseMovement(dx, dy);
             
             curPosX = xpos;
             curPosY = ypos;
@@ -301,7 +292,7 @@ int main(){
             glfwGetCursorPos(window, &xPos, &yPos);
 
             std::cout << xPos << " " << yPos << std::endl;
-            func(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
+            rayTrace(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
         }
     };
     glfwSetMouseButtonCallback(wind, mouseButtonCallback);
@@ -320,7 +311,7 @@ int main(){
         //Custom framebuffer viewport setup
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glm::mat4 view = cam.GetInvertedCamera(0.0f);//cam.GetInvertedCamera(2 * (cam.Position.y + 1.5)); // To be changed later to distance to plane
+        glm::mat4 view = cam.GetInvertedCamera(0.0f);
         glEnable(GL_CULL_FACE);
         //Terrain
         t1.Bind(GL_TEXTURE0);
@@ -378,8 +369,6 @@ int main(){
         glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "terrainTexture"), 1);
 
         terrainMesh.DrawElements();
-        //fb.Unbind();
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         t.Bind(GL_TEXTURE0);
         fb.BindTexture(GL_TEXTURE1);
@@ -388,7 +377,6 @@ int main(){
         GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
         GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "time"), glfwGetTime()));
         GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
-//        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "rippleCenter"), 0.0f, 0.0f, 0.0f));
         GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ka"), 0.3));
         GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Kd"), 1.0));
         GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ks"), 1.0));
@@ -396,7 +384,6 @@ int main(){
         GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "viewDir"), cam.Position.x, cam.Position.y, cam.Position.z));
         glUniform1i(glGetUniformLocation(sh.GetProgramId(), "waterTex"), 0);
         glUniform1i(glGetUniformLocation(sh.GetProgramId(), "reflectionTex"), 1);
-        //func(waterSurface, model, cam);
 
         waterMesh.DrawElements();
 
