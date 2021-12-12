@@ -59,8 +59,8 @@ Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
             output.coordinates.push_back(j * dH - 1.0f); //x
             output.coordinates.push_back(0.5); //y
             output.coordinates.push_back(i * dV - 1.0f); //z
-            output.coordinates.push_back(static_cast<float>(j) / hVertices); //x texCoordinate
-            output.coordinates.push_back(1.0f - static_cast<float>(i) / vVertices); //y texCoordinate
+            output.coordinates.push_back(static_cast<float>(j) / (hVertices - 1)); //x texCoordinate
+            output.coordinates.push_back(1.0f - static_cast<float>(i) / (vVertices - 1)); //y texCoordinate
         }
     }
     
@@ -83,8 +83,8 @@ Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
 }
 
 Ray constructRayThroughPixel(const Camera& camera, int i, int j) {
-    const float xNDC = (j + 0.5f) / width;
-    const float yNDC = (i + 0.5f) / height;
+    const float xNDC = (j + 0.5) / width;
+    const float yNDC = (i + 0.5) / height;
     
     const float screenX = 2 * xNDC - 1;
     const float screenY = 1 - 2 * yNDC;
@@ -146,6 +146,14 @@ void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Sha
             Ray r = constructRayThroughPixel(cam, y, x);
             if (t.intersects(r, tVal)) {
                 vec3 intersection = r.p0 + tVal * r.dir;
+                std::vector<float> rayAttribs;
+                rayAttribs.push_back(r.p0.x);
+                rayAttribs.push_back(r.p0.y);
+                rayAttribs.push_back(r.p0.z);
+                rayAttribs.push_back(intersection.x);
+                rayAttribs.push_back(intersection.y);
+                rayAttribs.push_back(intersection.z);
+                
                 glfwSetTime(0.0);
                 sh.bind();
                 GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "rippleCenter"), intersection.x, intersection.y, intersection.z));
@@ -156,7 +164,6 @@ void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Sha
     }
 
 }
-
 
 int main(){
     GLFWwindow* wind;
@@ -196,12 +203,11 @@ int main(){
     //glEnable(GL_CULL_FACE);
 
     //Water
-    Surface waterSurface = generateIndexedTriangleStripPlane(2, 2);
+    Surface waterSurface = generateIndexedTriangleStripPlane(100, 100);
     Mesh waterMesh(waterSurface.coordinates.data(), waterSurface.size);
     waterMesh.AddLayout(3);
     waterMesh.AddLayout(2);
     waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
-    
     
     Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
 
@@ -231,14 +237,17 @@ int main(){
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader2.gsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader3.fsh");
     
+    Shader lineShader("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/VshaderTest.vsh",
+                      "",
+                      "/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/FshaderTest.fsh");
     
     //Setting up uniforms
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
     
     Camera cam;
     
     
-    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 1.0f, 150.0f);
+    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 1.f, 150.0f);
     
     CallbackContext ctx = {&waterSurface, &model, &cam, &sh};
     glfwSetWindowUserPointer(wind, &ctx);
@@ -289,11 +298,19 @@ int main(){
     };
     glfwSetMouseButtonCallback(wind, mouseButtonCallback);
     
+    int framebufferWidth, framebufferHeight;
+    glfwGetFramebufferSize(wind, &framebufferWidth, &framebufferHeight);
+    
     
     FrameBuffer fb(width, height);
     
+    int defaultFBWidth, defaultFBHeight;
+    glfwGetFramebufferSize(wind, &defaultFBWidth, &defaultFBHeight);
+    
     while(!glfwWindowShouldClose(wind)){
         fb.Bind();
+        //Custom framebuffer viewport setup
+        glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glm::mat4 view = cam.GetInvertedCamera(0.0f);//cam.GetInvertedCamera(2 * (cam.Position.y + 1.5)); // To be changed later to distance to plane
         glEnable(GL_CULL_FACE);
@@ -332,6 +349,7 @@ int main(){
         terrainMesh.DrawElements();
         
         fb.Unbind();
+        glViewport(0, 0, defaultFBWidth, defaultFBHeight);
         //glDisable(GL_CULL_FACE);
         
         
