@@ -200,7 +200,7 @@ int main(){
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    //glEnable(GL_CULL_FACE);
+
 
     //Water
     Surface waterSurface = generateIndexedTriangleStripPlane(100, 100);
@@ -209,11 +209,11 @@ int main(){
     waterMesh.AddLayout(2);
     waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
     
-    Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
+    Texture t("../res/WaterDiffuse.png");
 
-    Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh",
-              "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader3.gsh",
-              "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
+    Shader sh("../shaders/vertex/vertexShader1.vsh",
+              "../shaders/geometry/geometryShader3.gsh",
+              "../shaders/fragment/fragmentShader1.fsh");
     
     //Terrain
     Surface terrain = generateIndexedTriangleStripPlane(100, 100);
@@ -222,24 +222,24 @@ int main(){
     terrainMesh.AddLayout(2);
     terrainMesh.BindIndexBuffer(terrain.indexBuffer.data(), terrain.indexCount);
     
-    Texture t1("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainHeightMap.png");
-    Texture t2("/Users/eriknouroyan/Desktop/opengl_project/res/TerrainDiffuse.png");
+    Texture t1("../res/TerrainHeightMap.png");
+    Texture t2("../res/TerrainDiffuse.png");
     
-    Shader sh2("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
-               "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader1.gsh",
-               "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader2.fsh");
+    Shader sh2("../shaders/vertex/vertexShader2.vsh",
+               "../shaders/geometry/geometryShader1.gsh",
+               "../shaders/fragment/fragmentShader2.fsh");
     
     //Grass
-    Texture grassDist("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDistribution.png");
-    Texture grassText("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDiffuse.png");
+    Texture grassDist("../res/GrassDistribution.png");
+    Texture grassText("../res/GrassDiffuse.png");
     
-    Shader sh3("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
-               "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader2.gsh",
-               "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader3.fsh");
+    Shader sh3("../shaders/vertex/vertexShader2.vsh",
+               "../shaders/geometry/geometryShader2.gsh",
+               "../shaders/fragment/fragmentShader3.fsh");
     
-    Shader lineShader("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/VshaderTest.vsh",
+    Shader lineShader("../shaders/vertex/VshaderTest.vsh",
                       "",
-                      "/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/FshaderTest.fsh");
+                      "../shaders/vertex/FshaderTest.fsh");
     
     //Setting up uniforms
     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
@@ -256,23 +256,29 @@ int main(){
     
     auto keyboardCallback = [](GLFWwindow* window, int key, int scancode, int action, int mods) {
         CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
-        if (key == GLFW_KEY_RIGHT && action == GLFW_REPEAT)
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         {
             ctx->cam->ProcessKeyboard(RIGHT, 0.02f);
         }
-        else if (key == GLFW_KEY_LEFT && action == GLFW_REPEAT) {
+        
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
             ctx->cam->ProcessKeyboard(LEFT, 0.02f);
         }
-        else if (key == GLFW_KEY_UP && action == GLFW_REPEAT) {
+        
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
             ctx->cam->ProcessKeyboard(FORWARD, 0.02f);
         }
-        else if (key == GLFW_KEY_DOWN && action == GLFW_REPEAT) {
+        
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
             ctx->cam->ProcessKeyboard(BACKWARD, 0.02f);
         }
     };
     glfwSetKeyCallback(wind, keyboardCallback);
-    
+
+    static bool camFreeze=false;
+
     auto cursorPosCallback = [](GLFWwindow* window, double xpos, double ypos) {
+        if (camFreeze ==true) return;
         static float curPosX = xpos, curPosY = ypos;
         if (xpos >= 0 && xpos < width && ypos >= 0 && ypos < height) {
             CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
@@ -287,11 +293,13 @@ int main(){
     glfwSetCursorPosCallback(wind, cursorPosCallback);
     
     auto mouseButtonCallback = [](GLFWwindow* window, int button, int action, int mods) {
+        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) camFreeze=!camFreeze;
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
             double xPos;
             double yPos;
             glfwGetCursorPos(window, &xPos, &yPos);
+
             std::cout << xPos << " " << yPos << std::endl;
             func(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
         }
@@ -330,6 +338,7 @@ int main(){
         
         terrainMesh.DrawElements();
         
+        glDisable(GL_CULL_FACE);
         //Grass
         t1.Bind(GL_TEXTURE0);
         grassDist.Bind(GL_TEXTURE1);
@@ -350,7 +359,6 @@ int main(){
         
         fb.Unbind();
         glViewport(0, 0, defaultFBWidth, defaultFBHeight);
-        //glDisable(GL_CULL_FACE);
         
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
