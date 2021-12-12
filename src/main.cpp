@@ -9,11 +9,16 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Camera.h"
+#include "Triangle.hpp"
+#include "FrameBuffer.h"
 
 #include <opencv2/opencv.hpp>
 
 #define PI 3.14
 #define TO_RADIAN(x) ((x)*(PI))/180
+
+const int width = 800;
+const int height = 800;
 
 void CheckOpenGLError(const char* stmt, const char* fname, int line)
 {
@@ -35,6 +40,13 @@ struct Surface{
     int indexCount;
     std::vector<float> coordinates;
     std::vector<int> indexBuffer;
+};
+
+struct CallbackContext {
+    Surface* surface;
+    glm::mat4* model;
+    Camera* cam;
+    Shader* shader;
 };
 
 Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
@@ -70,6 +82,81 @@ Surface generateIndexedTriangleStripPlane(int hVertices, int vVertices) {
     return output;
 }
 
+Ray constructRayThroughPixel(const Camera& camera, int i, int j) {
+    const float xNDC = (j + 0.5f) / width;
+    const float yNDC = (i + 0.5f) / height;
+    
+    const float screenX = 2 * xNDC - 1;
+    const float screenY = 1 - 2 * yNDC;
+    
+    const float aspectRatio = static_cast<float>(width) / height;
+    const float cameraX = screenX * aspectRatio * tan(glm::radians(45.f / 2));
+    const float cameraY = screenY * tan(glm::radians(45.f / 2));
+    
+    glm::mat4 inverseCameraMatrix = inverse(camera.GetViewMatrix());
+    glm::vec3 camPos = camera.Position;
+    glm::vec3 dir = inverseCameraMatrix * glm::vec4(cameraX, cameraY, -1.f, 1.f) - glm::vec4(camPos, 1.0);
+    
+    return {camPos, glm::normalize(dir)};
+}
+
+void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x) {
+    for (int i = 0; i < waterSurface.indexCount - 2; ++i) {
+        Triangle t;
+        if (!(i % 2)) {
+            const glm::vec4 v1 = model * glm::vec4(waterSurface.coordinates[waterSurface.indexBuffer.at(i + 1) * 5],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 1) * 5 + 1],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 1) * 5 + 2],
+                                                   1.0);
+            
+            const glm::vec4 v2 = model * glm::vec4(waterSurface.coordinates[waterSurface.indexBuffer.at(i) * 5],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i) * 5 + 1],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i) * 5 + 2],
+                                                   1.0);
+            const glm::vec4 v3 = model * glm::vec4(waterSurface.coordinates[waterSurface.indexBuffer.at(i + 2) * 5],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 2) * 5 + 1],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 2) * 5 + 2],
+                                                   1.0);
+            
+            t.setVertices({v1, v2, v3});
+        }
+        else {
+            const glm::vec4 v1 = model * glm::vec4(waterSurface.coordinates[waterSurface.indexBuffer.at(i + 2) * 5],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 2) * 5 + 1],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 2) * 5 + 2],
+                                                   1.0);
+            
+            const glm::vec4 v2 = model * glm::vec4(waterSurface.coordinates[waterSurface.indexBuffer.at(i) * 5],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i) * 5 + 1],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i) * 5 + 2],
+                                                   1.0);
+            
+            const glm::vec4 v3 = model * glm::vec4(waterSurface.coordinates[waterSurface.indexBuffer.at(i + 1) * 5],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 1) * 5 + 1],
+                                                   waterSurface.coordinates[waterSurface.indexBuffer.at(i + 1) * 5 + 2],
+                                                   1.0);
+            
+            t.setVertices({v1, v2, v3});
+        }
+        
+        glm::vec3 n = t.getPlaneNormal();
+        
+        if (!(isnan(n.x) && isnan(n.y) && isnan(n.z))) {
+            float tVal;
+            Ray r = constructRayThroughPixel(cam, y, x);
+            if (t.intersects(r, tVal)) {
+                vec3 intersection = r.p0 + tVal * r.dir;
+                glfwSetTime(0.0);
+                sh.bind();
+                GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "rippleCenter"), intersection.x, intersection.y, intersection.z));
+                std::cout << "Here" << std::endl;
+                sh.unbind();
+            }
+        }
+    }
+
+}
+
 
 int main(){
     GLFWwindow* wind;
@@ -81,9 +168,6 @@ int main(){
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    
-    const int width = 800;
-    const int height = 800;
     
     wind = glfwCreateWindow(width, height, "MyTitle", NULL, NULL);
     
@@ -109,16 +193,21 @@ int main(){
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glEnable(GL_CULL_FACE);
 
     //Water
-    Surface waterSurface = generateIndexedTriangleStripPlane(100, 100);
+    Surface waterSurface = generateIndexedTriangleStripPlane(2, 2);
     Mesh waterMesh(waterSurface.coordinates.data(), waterSurface.size);
     waterMesh.AddLayout(3);
-    waterMesh.AddLayout(2);waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
-
+    waterMesh.AddLayout(2);
+    waterMesh.BindIndexBuffer(waterSurface.indexBuffer.data(), waterSurface.indexCount);
+    
+    
     Texture t("/Users/eriknouroyan/Desktop/opengl_project/res/WaterDiffuse.png");
 
-    Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh", "", "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
+    Shader sh("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader1.vsh",
+              "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader3.gsh",
+              "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader1.fsh");
     
     //Terrain
     Surface terrain = generateIndexedTriangleStripPlane(100, 100);
@@ -134,7 +223,7 @@ int main(){
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader1.gsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader2.fsh");
     
-    
+    //Grass
     Texture grassDist("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDistribution.png");
     Texture grassText("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDiffuse.png");
     
@@ -144,40 +233,43 @@ int main(){
     
     
     //Setting up uniforms
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -8.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, -2.0f, -4.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
+    
     Camera cam;
+    
+    
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 1.0f, 150.0f);
     
-    glfwSetWindowUserPointer(wind, &cam);
+    CallbackContext ctx = {&waterSurface, &model, &cam, &sh};
+    glfwSetWindowUserPointer(wind, &ctx);
     glfwSetInputMode(wind, GLFW_STICKY_KEYS, 1);
     
     
     auto keyboardCallback = [](GLFWwindow* window, int key, int scancode, int action, int mods) {
-        Camera* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+        CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
         if (key == GLFW_KEY_RIGHT && action == GLFW_REPEAT)
         {
-            cam->ProcessKeyboard(RIGHT, 0.02f);
+            ctx->cam->ProcessKeyboard(RIGHT, 0.02f);
         }
         else if (key == GLFW_KEY_LEFT && action == GLFW_REPEAT) {
-            cam->ProcessKeyboard(LEFT, 0.02f);
+            ctx->cam->ProcessKeyboard(LEFT, 0.02f);
         }
         else if (key == GLFW_KEY_UP && action == GLFW_REPEAT) {
-            cam->ProcessKeyboard(FORWARD, 0.02f);
+            ctx->cam->ProcessKeyboard(FORWARD, 0.02f);
         }
         else if (key == GLFW_KEY_DOWN && action == GLFW_REPEAT) {
-            cam->ProcessKeyboard(BACKWARD, 0.02f);
+            ctx->cam->ProcessKeyboard(BACKWARD, 0.02f);
         }
     };
-    
     glfwSetKeyCallback(wind, keyboardCallback);
     
     auto cursorPosCallback = [](GLFWwindow* window, double xpos, double ypos) {
         static float curPosX = xpos, curPosY = ypos;
         if (xpos >= 0 && xpos < width && ypos >= 0 && ypos < height) {
-            Camera* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+            CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
             float dx = xpos - curPosX;
             float dy = curPosY - ypos;
-            cam->ProcessMouseMovement(dx, dy);
+            ctx->cam->ProcessMouseMovement(dx, dy);
             
             curPosX = xpos;
             curPosY = ypos;
@@ -185,15 +277,30 @@ int main(){
     };
     glfwSetCursorPosCallback(wind, cursorPosCallback);
     
+    auto mouseButtonCallback = [](GLFWwindow* window, int button, int action, int mods) {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
+            double xPos;
+            double yPos;
+            glfwGetCursorPos(window, &xPos, &yPos);
+            std::cout << xPos << " " << yPos << std::endl;
+            func(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
+        }
+    };
+    glfwSetMouseButtonCallback(wind, mouseButtonCallback);
+    
+    
+    FrameBuffer fb(width, height);
+    
     while(!glfwWindowShouldClose(wind)){
+        fb.Bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        glm::mat4 view = cam.GetViewMatrix();
-        
+        glm::mat4 view = cam.GetInvertedCamera(0.0f);//cam.GetInvertedCamera(2 * (cam.Position.y + 1.5)); // To be changed later to distance to plane
+        glEnable(GL_CULL_FACE);
+        //Terrain
         t1.Bind(GL_TEXTURE0);
         t2.Bind(GL_TEXTURE1);
         sh2.bind();
-
         GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
         GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
         GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
@@ -203,25 +310,10 @@ int main(){
         GL_CHECK(glUniform3f(glGetUniformLocation(sh2.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
         glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "heightMap"), 0);
         glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "terrainTexture"), 1);
-
+        
         terrainMesh.DrawElements();
         
-        
-        t.Bind(GL_TEXTURE0);
-        sh.bind();
-        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
-        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
-        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "time"), glfwGetTime()));
-        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
-        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ka"), 0.3));
-        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Kd"), 1.0));
-        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ks"), 1.0));
-        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
-        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "viewDir"), cam.Position.x, cam.Position.y, cam.Position.z));
-        glUniform1i(glGetUniformLocation(sh.GetProgramId(), "waterTex"), 0);
-
-        waterMesh.DrawElements();
-        
+        //Grass
         t1.Bind(GL_TEXTURE0);
         grassDist.Bind(GL_TEXTURE1);
         grassText.Bind(GL_TEXTURE2);
@@ -237,6 +329,66 @@ int main(){
         glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "grassDist"), 1);
         glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "grassText"), 2);
         
+        terrainMesh.DrawElements();
+        
+        fb.Unbind();
+        //glDisable(GL_CULL_FACE);
+        
+        
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        view = cam.GetViewMatrix();
+        t1.Bind(GL_TEXTURE0);
+        t2.Bind(GL_TEXTURE1);
+        sh2.bind();
+
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh2.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "Ka"), 0.3));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "Kd"), 1.0));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh2.GetProgramId(), "Ks"), 1.0));
+        GL_CHECK(glUniform3f(glGetUniformLocation(sh2.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
+        glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "heightMap"), 0);
+        glUniform1i(glGetUniformLocation(sh2.GetProgramId(), "terrainTexture"), 1);
+
+        terrainMesh.DrawElements();
+        //fb.Unbind();
+        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        t.Bind(GL_TEXTURE0);
+        fb.BindTexture(GL_TEXTURE1);
+        sh.bind();
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "time"), glfwGetTime()));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
+//        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "rippleCenter"), 0.0f, 0.0f, 0.0f));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ka"), 0.3));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Kd"), 1.0));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh.GetProgramId(), "Ks"), 1.0));
+        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
+        GL_CHECK(glUniform3f(glGetUniformLocation(sh.GetProgramId(), "viewDir"), cam.Position.x, cam.Position.y, cam.Position.z));
+        glUniform1i(glGetUniformLocation(sh.GetProgramId(), "waterTex"), 0);
+        glUniform1i(glGetUniformLocation(sh.GetProgramId(), "reflectionTex"), 1);
+        //func(waterSurface, model, cam);
+
+        waterMesh.DrawElements();
+
+        t1.Bind(GL_TEXTURE0);
+        grassDist.Bind(GL_TEXTURE1);
+        grassText.Bind(GL_TEXTURE2);
+        sh3.bind();
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh3.GetProgramId(), "view"), 1, GL_FALSE, &view[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh3.GetProgramId(), "model"), 1, GL_FALSE, &model[0][0]));
+        GL_CHECK(glUniformMatrix4fv(glGetUniformLocation(sh3.GetProgramId(), "projection"), 1, GL_FALSE, &projection[0][0]));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh3.GetProgramId(), "Ka"), 0.3));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh3.GetProgramId(), "Kd"), 1.0));
+        GL_CHECK(glUniform1f(glGetUniformLocation(sh3.GetProgramId(), "Ks"), 1.0));
+        GL_CHECK(glUniform3f(glGetUniformLocation(sh3.GetProgramId(), "lightDir"), 0.0f, -1.0f, -1.0f));
+        glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "heightMap"), 0);
+        glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "grassDist"), 1);
+        glUniform1i(glGetUniformLocation(sh3.GetProgramId(), "grassText"), 2);
+
         terrainMesh.DrawElements();
         
         
