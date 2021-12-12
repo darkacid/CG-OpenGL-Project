@@ -2,7 +2,7 @@
 #include <opencv2/opencv.hpp>
 #include "Texture.h"
 #include <cstring>
-//std::memcpy issue
+
 
 
 Texture::Texture(const std::string& path)

@@ -35,5 +35,4 @@ void main(){
     vec2 ss = (interPos.xy / interPos.w) * 0.5 + 0.5;
     vec2 reflection = vec2(ss.x, -ss.y);
     color = normalize(vec4(Ia + Id + Is, 1.0) * mix(texture(waterTex, textureCoord), texture(reflectionTex, reflection), 0.7));
-    //color = texture(reflectionTex, texCoords);
 }

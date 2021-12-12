@@ -27,12 +27,12 @@ void main(){
     texCoords = gs_in[0].texCoord;
     EmitVertex();
     
-    //normal = transpose(inverse(mat3(view * model))) * getNormal();
+
     gl_Position = projection * view * model * gl_in[1].gl_Position;
     texCoords = gs_in[1].texCoord;
     EmitVertex();
     
-    //normal = transpose(inverse(mat3(view * model))) * getNormal();
+
     gl_Position = projection * view * model * gl_in[2].gl_Position;
     texCoords = gs_in[2].texCoord;
     EmitVertex();

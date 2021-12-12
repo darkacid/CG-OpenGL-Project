@@ -28,7 +28,7 @@ void main(){
     
     vec4 pos = gl_in[0].gl_Position;
     float dist = distance(vec3(model * pos), rippleCenter);
-    float offset = 10 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
+    float offset = 2 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
     gl_Position = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     interPos = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     texCoords = gs_in[0].texCoord;
@@ -36,7 +36,7 @@ void main(){
     
     pos = gl_in[1].gl_Position;
     dist = distance(vec3(model * pos), rippleCenter);
-    offset = 10 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
+    offset = 2 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
     gl_Position = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     interPos = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     texCoords = gs_in[1].texCoord;
@@ -44,7 +44,7 @@ void main(){
     
     pos = gl_in[2].gl_Position;
     dist = distance(vec3(model * pos), rippleCenter);
-    offset = 10 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
+    offset = 2 * dist / (time + 1) * pow(2, -9.0 * dist) * cos(44 * dist - 3 * time);
     gl_Position = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     interPos = projection * view * model * vec4(pos.x, pos.y + offset, pos.z, 1.0);
     texCoords = gs_in[2].texCoord;
