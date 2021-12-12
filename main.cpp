@@ -100,7 +100,7 @@ Ray constructRayThroughPixel(const Camera& camera, int i, int j) {
     return {camPos, glm::normalize(dir)};
 }
 
-void func(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x) {
+void rayTrace(const Surface& waterSurface, const mat4& model, const Camera& cam, Shader& sh, int y, int x) {
     for (int i = 0; i < waterSurface.indexCount - 2; ++i) {
         Triangle t;
         if (!(i % 2)) {
@@ -232,7 +232,7 @@ int main(){
     //Grass
     Texture grassDist("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDistribution.png");
     Texture grassText("/Users/eriknouroyan/Desktop/opengl_project/res/GrassDiffuse.png");
-    
+
     Shader sh3("/Users/eriknouroyan/Desktop/opengl_project/shaders/vertex/vertexShader2.vsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/geometry/geometryShader2.gsh",
                "/Users/eriknouroyan/Desktop/opengl_project/shaders/fragment/fragmentShader3.fsh");
@@ -274,8 +274,11 @@ int main(){
         }
     };
     glfwSetKeyCallback(wind, keyboardCallback);
-    
+
+    static bool camFreeze=false;
+
     auto cursorPosCallback = [](GLFWwindow* window, double xpos, double ypos) {
+        if (camFreeze ==true) return;
         static float curPosX = xpos, curPosY = ypos;
         if (xpos >= 0 && xpos < width && ypos >= 0 && ypos < height) {
             CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
@@ -290,13 +293,15 @@ int main(){
     glfwSetCursorPosCallback(wind, cursorPosCallback);
     
     auto mouseButtonCallback = [](GLFWwindow* window, int button, int action, int mods) {
+        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) camFreeze=!camFreeze;
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             CallbackContext* ctx = static_cast<CallbackContext*>(glfwGetWindowUserPointer(window));
             double xPos;
             double yPos;
             glfwGetCursorPos(window, &xPos, &yPos);
+
             std::cout << xPos << " " << yPos << std::endl;
-            func(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
+            rayTrace(*(ctx->surface), *(ctx->model), *(ctx->cam), *(ctx->shader), yPos, xPos);
         }
     };
     glfwSetMouseButtonCallback(wind, mouseButtonCallback);
